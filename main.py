@@ -31,7 +31,7 @@ class Client(cmd.Bot):
         self.admin = "initys_imran"
 
         try:
-            guild = dc.Object(id=1426161231911456853)
+            guild = dc.Object(id=1480955922770821122)
             synced = await self.tree.sync(guild=guild)
             print(f'Synced {len(synced)} commands to guild {guild.id}')
         except Exception as e:
@@ -65,7 +65,7 @@ intents = dc.Intents.default()
 intents.message_content = True
 client = Client(command_prefix="!", intents=intents)
 
-GUILD_ID = dc.Object(id=1426161231911456853)
+GUILD_ID = dc.Object(id=1480955922770821122)
 
 # '/' COMMANDS
 @client.tree.command(name="greet", description="sagt Hallo", guild=GUILD_ID)
