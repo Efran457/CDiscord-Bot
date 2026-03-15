@@ -33,6 +33,10 @@ class Client(cmd.Bot):
         if message.content.lower().startswith("bot sag "):
             await message.channel.send(message.content[8:])
 
+        if message.content.lower().startswith("bot stop"):
+            await message.channel.send("Bye")
+            await self.close()
+
         await self.process_commands(message)
 
     async def on_member_join(self, member):
@@ -53,6 +57,27 @@ intents.members = True
 client = Client(command_prefix="!", intents=intents)
 
 GUILD_ID = dc.Object(id=1480955922770821122)
+
+#ExtraClasses
+class SimpleButton(dc.ui.Button):
+
+    def __init__(self, label, style, callback_func=None):
+        super().__init__(label=label, style=style)
+        self.callback_func = callback_func
+
+    async def callback(self, interaction: dc.Interaction):
+
+        if self.callback_func:
+            await self.callback_func(interaction, self)
+
+class ButtonView(dc.ui.View):
+
+    def __init__(self, buttons: list):
+        super().__init__(timeout=60)
+
+        for button in buttons:
+            self.add_item(button)
+
 
 # ---------------- SLASH COMMANDS ----------------
 
@@ -96,34 +121,44 @@ async def wurfel(interaction: dc.Interaction, seiten: int):
         content=f"🎲 Finale Nummer mit {seiten} Seiten = **{finale}**"
     )
 
-
 @client.tree.command(name="rps", description="Schere Stein Papier", guild=GUILD_ID)
-async def rps(interaction: dc.Interaction, choice: str):
+async def rps(interaction: dc.Interaction):
 
     options = ["stein", "papier", "schere"]
-    bot = random.choice(options)
 
-    if choice not in options:
-        await interaction.response.send_message(
-            "Bitte wähle: stein, papier oder schere"
+    async def play(interaction: dc.Interaction, button):
+
+        player = button.label.split(" ")[1].lower()
+        bot = random.choice(options)
+
+        if player == bot:
+            result = "Unentschieden 🤝"
+        elif (
+            (player == "stein" and bot == "schere") or
+            (player == "papier" and bot == "stein") or
+            (player == "schere" and bot == "papier")
+        ):
+            result = "Du gewinnst! 🎉"
+        else:
+            result = "Ich gewinne 😎"
+
+        await interaction.response.edit_message(
+            content=f"Du: **{player}**\nBot: **{bot}**\n{result}",
+            view=None
         )
-        return
 
-    if choice == bot:
-        result = "Unentschieden 🤝"
-    elif (
-        (choice == "stein" and bot == "schere") or
-        (choice == "papier" and bot == "stein") or
-        (choice == "schere" and bot == "papier")
-    ):
-        result = "Du gewinnst! 🎉"
-    else:
-        result = "Ich gewinne 😎"
+    buttons = [
+        SimpleButton("🪨 Stein", dc.ButtonStyle.primary, play),
+        SimpleButton("📄 Papier", dc.ButtonStyle.success, play),
+        SimpleButton("✂️ Schere", dc.ButtonStyle.danger, play)
+    ]
+
+    view = ButtonView(buttons)
 
     await interaction.response.send_message(
-        f"Du: **{choice}**\nBot: **{bot}**\n{result}"
+        "🎮 **Schere Stein Papier**\nWähle deine Option:",
+        view=view
     )
-
 
 @client.tree.command(name="werbung", description="Embed Demo", guild=GUILD_ID)
 async def werbung(interaction: dc.Interaction):
@@ -193,5 +228,72 @@ async def botinfo(interaction: dc.Interaction):
 
     await interaction.response.send_message(embed=embed)
 
+@client.tree.command(name="help", description="zeigt alle bot commands", guild=GUILD_ID)
+async def help_command(interaction: dc.Interaction):
+
+    embed = dc.Embed(
+        title="🤖 Bot Commands",
+        description="Hier sind alle verfügbaren Commands:",
+        color=dc.Color.green()
+    )
+
+    embed.add_field(
+        name="👋 Allgemein",
+        value="""
+/greet – sagt Hallo
+/sag – bot sagt deine Nachricht
+/ping – zeigt bot ping
+/info – zeigt bot info
+""",
+        inline=False
+    )
+
+    embed.add_field(
+        name="🎲 Fun",
+        value="""
+/random – zufällige Zahl
+/wurfel – würfeln
+/rps – Schere Stein Papier
+""",
+        inline=False
+    )
+
+    embed.add_field(
+        name="🔧 Moderation",
+        value="""
+/kick – kickt ein Mitglied
+/clear – löscht Nachrichten
+""",
+        inline=False
+    )
+
+    embed.add_field(
+        name="📢 Sonstiges",
+        value="""
+/werbung – Embed Demo
+/help – zeigt diese Liste
+""",
+        inline=False
+    )
+
+    embed.set_footer(text="Cockie Bot")
+
+    await interaction.response.send_message(embed=embed)
+
+@client.tree.command(name="buttons", description="test buttons", guild=GUILD_ID)
+async def buttons(interaction: dc.Interaction):
+
+    buttons = [
+        SimpleButton("🔴 Red", dc.ButtonStyle.danger),
+        SimpleButton("🟢 Green", dc.ButtonStyle.success),
+        SimpleButton("🔵 Blue", dc.ButtonStyle.primary)
+    ]
+
+    view = ButtonView(buttons)
+
+    await interaction.response.send_message(
+        "Click a button:",
+        view=view
+    )
 
 client.run(os.getenv("TOKEN"))
